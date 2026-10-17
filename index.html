@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' blob:;">
+  <title>Local File Studio — Offline Image &amp; PDF Converter</title>
+  <meta name="description" content="Convert and resize images and PDFs entirely in your browser. Zero uploads, zero servers, 100% private and offline-ready.">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ═══════════════════ HEADER ═══════════════════ -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="6" fill="url(#lg)"/><path d="M10 10h12v4H10zm0 6h12v4H10zm0 6h8v4h-8z" fill="#e0e7ff"/><defs><linearGradient id="lg" x1="2" y1="2" x2="30" y2="30"><stop stop-color="#818cf8"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs></svg>
+        </div>
+        <div>
+          <h1 class="logo-title">Local File Studio</h1>
+          <p class="logo-sub">100% browser-based &bull; Zero uploads &bull; Offline-ready</p>
+        </div>
+      </div>
+      <div class="header-badge" id="offlineBadge" title="All processing happens locally">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Private &amp; Secure</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════ MAIN CONTAINER ═══════════════════ -->
+  <main class="app-main">
+    <!-- TAB NAVIGATION -->
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" role="tab" aria-selected="true" data-tab="imageConvert">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span>Image Resize &amp; Convert</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="pdfToImage">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
+        <span>PDF to Image</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="imageToPdf">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="M15 15l-3-3-3 3"/></svg>
+        <span>Image to PDF</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="pdfCompress">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/></svg>
+        <span>PDF Compress</span>
+      </button>
+    </nav>
+
+    <!-- ═══════════════ TAB: IMAGE RESIZE & CONVERT ═══════════════ -->
+    <section class="tab-panel active" id="panel-imageConvert" role="tabpanel">
+      <!-- DROP ZONE -->
+      <div class="drop-zone" id="dropZone-imageConvert" data-tab="imageConvert">
+        <div class="drop-zone-content">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p class="drop-text">Drag &amp; drop images here or <label class="file-browse" tabindex="0">browse files<input type="file" id="fileInput-imageConvert" multiple accept=".png,.jpg,.jpeg,.webp,.avif,.bmp,.gif,.svg,.tif,.tiff,.heic,.heif" hidden></label></p>
+          <p class="drop-hint">PNG, JPG, WEBP, AVIF, BMP, GIF, SVG, TIFF, HEIC</p>
+        </div>
+      </div>
+
+      <!-- FILE QUEUE -->
+      <div class="queue-section" id="queueSection-imageConvert" style="display:none">
+        <div class="queue-header">
+          <h3 class="queue-title"><span id="queueCount-imageConvert">0</span> file(s) queued</h3>
+          <button class="btn-ghost btn-sm" id="clearQueue-imageConvert">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Queue
+          </button>
+        </div>
+        <div class="queue-list" id="queueList-imageConvert"></div>
+      </div>
+
+      <!-- SETTINGS PANELS -->
+      <div class="settings-grid" id="settings-imageConvert" style="display:none">
+        <!-- STEP 1: RESIZE -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">1</span><h3>Resize Mode</h3></div>
+          <div class="radio-group" data-name="resizeMode-imageConvert">
+            <label class="radio-card active"><input type="radio" name="resizeMode-imageConvert" value="original" checked><span class="radio-label">Keep Original Size</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageConvert" value="percentage"><span class="radio-label">By Percentage (%)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageConvert" value="dimensions"><span class="radio-label">By Width × Height (px)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageConvert" value="filesize"><span class="radio-label">By Target File Size</span></label>
+          </div>
+          <!-- Sub-controls -->
+          <div class="resize-controls" id="resizeControls-imageConvert">
+            <div class="ctrl-sub" id="ctrl-percentage-imageConvert" style="display:none">
+              <label class="ctrl-label">Scale: <strong id="pctValue-imageConvert">100</strong>%</label>
+              <input type="range" class="slider" id="pctSlider-imageConvert" min="10" max="200" value="100" step="1">
+            </div>
+            <div class="ctrl-sub" id="ctrl-dimensions-imageConvert" style="display:none">
+              <div class="dim-row">
+                <div class="dim-field"><label>Width (px)</label><input type="number" id="dimW-imageConvert" min="1" max="16384" placeholder="auto"></div>
+                <span class="dim-x">×</span>
+                <div class="dim-field"><label>Height (px)</label><input type="number" id="dimH-imageConvert" min="1" max="16384" placeholder="auto"></div>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="aspectLock-imageConvert" checked><span>Maintain Aspect Ratio</span></label>
+            </div>
+            <div class="ctrl-sub" id="ctrl-filesize-imageConvert" style="display:none">
+              <div class="size-row">
+                <input type="number" class="size-input" id="targetSize-imageConvert" min="1" placeholder="500" value="500">
+                <select class="size-unit" id="targetUnit-imageConvert"><option value="KB" selected>KB</option><option value="MB">MB</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: COMPRESSION PROFILE -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">2</span><h3>Compression Profile</h3></div>
+          <div class="radio-group" data-name="compProfile-imageConvert">
+            <label class="radio-card active">
+              <input type="radio" name="compProfile-imageConvert" value="balanced" checked>
+              <span class="radio-label">Optimal Balance</span>
+              <span class="radio-desc">Quality 0.82 — 60-75% smaller, no visible loss</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="compProfile-imageConvert" value="smallest">
+              <span class="radio-label">Maximum Size Reduction</span>
+              <span class="radio-desc">Quality 0.42 — smallest file, aggressive compression</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="compProfile-imageConvert" value="lossless">
+              <span class="radio-label">Maximum Quality / Lossless</span>
+              <span class="radio-desc">Quality 1.0 — zero compromise</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- STEP 3: OUTPUT FORMAT -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">3</span><h3>Output Format</h3></div>
+          <div class="radio-group format-group" data-name="outputFormat-imageConvert">
+            <label class="radio-card active"><input type="radio" name="outputFormat-imageConvert" value="webp" checked><span class="radio-label">WEBP</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-imageConvert" value="jpeg"><span class="radio-label">JPEG</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-imageConvert" value="png"><span class="radio-label">PNG</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-imageConvert" value="avif"><span class="radio-label">AVIF</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-imageConvert" value="bmp"><span class="radio-label">BMP</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BAR -->
+      <div class="action-bar" id="actionBar-imageConvert" style="display:none">
+        <button class="btn-primary btn-lg" id="processBtn-imageConvert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Convert &amp; Download
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══════════════ TAB: PDF TO IMAGE ═══════════════ -->
+    <section class="tab-panel" id="panel-pdfToImage" role="tabpanel">
+      <div class="drop-zone" id="dropZone-pdfToImage" data-tab="pdfToImage">
+        <div class="drop-zone-content">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <p class="drop-text">Drag &amp; drop PDF files here or <label class="file-browse" tabindex="0">browse files<input type="file" id="fileInput-pdfToImage" multiple accept=".pdf" hidden></label></p>
+          <p class="drop-hint">PDF files only</p>
+        </div>
+      </div>
+      <div class="queue-section" id="queueSection-pdfToImage" style="display:none">
+        <div class="queue-header">
+          <h3 class="queue-title"><span id="queueCount-pdfToImage">0</span> file(s) queued</h3>
+          <button class="btn-ghost btn-sm" id="clearQueue-pdfToImage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Queue
+          </button>
+        </div>
+        <div class="queue-list" id="queueList-pdfToImage"></div>
+      </div>
+      <div class="settings-grid" id="settings-pdfToImage" style="display:none">
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">1</span><h3>Resize Mode</h3></div>
+          <div class="radio-group" data-name="resizeMode-pdfToImage">
+            <label class="radio-card active"><input type="radio" name="resizeMode-pdfToImage" value="original" checked><span class="radio-label">Keep Original Size</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfToImage" value="percentage"><span class="radio-label">By Percentage (%)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfToImage" value="dimensions"><span class="radio-label">By Width × Height (px)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfToImage" value="filesize"><span class="radio-label">By Target File Size</span></label>
+          </div>
+          <div class="resize-controls" id="resizeControls-pdfToImage">
+            <div class="ctrl-sub" id="ctrl-percentage-pdfToImage" style="display:none">
+              <label class="ctrl-label">Scale: <strong id="pctValue-pdfToImage">100</strong>%</label>
+              <input type="range" class="slider" id="pctSlider-pdfToImage" min="10" max="200" value="100" step="1">
+            </div>
+            <div class="ctrl-sub" id="ctrl-dimensions-pdfToImage" style="display:none">
+              <div class="dim-row">
+                <div class="dim-field"><label>Width (px)</label><input type="number" id="dimW-pdfToImage" min="1" max="16384" placeholder="auto"></div>
+                <span class="dim-x">×</span>
+                <div class="dim-field"><label>Height (px)</label><input type="number" id="dimH-pdfToImage" min="1" max="16384" placeholder="auto"></div>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="aspectLock-pdfToImage" checked><span>Maintain Aspect Ratio</span></label>
+            </div>
+            <div class="ctrl-sub" id="ctrl-filesize-pdfToImage" style="display:none">
+              <div class="size-row">
+                <input type="number" class="size-input" id="targetSize-pdfToImage" min="1" placeholder="500" value="500">
+                <select class="size-unit" id="targetUnit-pdfToImage"><option value="KB" selected>KB</option><option value="MB">MB</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">2</span><h3>Compression Profile</h3></div>
+          <div class="radio-group" data-name="compProfile-pdfToImage">
+            <label class="radio-card active"><input type="radio" name="compProfile-pdfToImage" value="balanced" checked><span class="radio-label">Optimal Balance</span><span class="radio-desc">Quality 0.82 — 60-75% smaller</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-pdfToImage" value="smallest"><span class="radio-label">Maximum Size Reduction</span><span class="radio-desc">Quality 0.42 — smallest file</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-pdfToImage" value="lossless"><span class="radio-label">Maximum Quality / Lossless</span><span class="radio-desc">Quality 1.0 — zero compromise</span></label>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">3</span><h3>Output Format</h3></div>
+          <div class="radio-group format-group" data-name="outputFormat-pdfToImage">
+            <label class="radio-card active"><input type="radio" name="outputFormat-pdfToImage" value="webp" checked><span class="radio-label">WEBP</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-pdfToImage" value="jpeg"><span class="radio-label">JPEG</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-pdfToImage" value="png"><span class="radio-label">PNG</span></label>
+            <label class="radio-card"><input type="radio" name="outputFormat-pdfToImage" value="avif"><span class="radio-label">AVIF</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar" id="actionBar-pdfToImage" style="display:none">
+        <button class="btn-primary btn-lg" id="processBtn-pdfToImage">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Convert &amp; Download
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══════════════ TAB: IMAGE TO PDF ═══════════════ -->
+    <section class="tab-panel" id="panel-imageToPdf" role="tabpanel">
+      <div class="drop-zone" id="dropZone-imageToPdf" data-tab="imageToPdf">
+        <div class="drop-zone-content">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+          <p class="drop-text">Drag &amp; drop images here or <label class="file-browse" tabindex="0">browse files<input type="file" id="fileInput-imageToPdf" multiple accept=".png,.jpg,.jpeg,.webp,.avif,.bmp,.gif,.svg,.tif,.tiff,.heic,.heif" hidden></label></p>
+          <p class="drop-hint">PNG, JPG, WEBP, AVIF, BMP, GIF, SVG, TIFF, HEIC</p>
+        </div>
+      </div>
+      <div class="queue-section" id="queueSection-imageToPdf" style="display:none">
+        <div class="queue-header">
+          <h3 class="queue-title"><span id="queueCount-imageToPdf">0</span> file(s) queued</h3>
+          <button class="btn-ghost btn-sm" id="clearQueue-imageToPdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Queue
+          </button>
+        </div>
+        <div class="queue-list" id="queueList-imageToPdf"></div>
+      </div>
+      <div class="settings-grid" id="settings-imageToPdf" style="display:none">
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">1</span><h3>Resize Mode</h3></div>
+          <div class="radio-group" data-name="resizeMode-imageToPdf">
+            <label class="radio-card active"><input type="radio" name="resizeMode-imageToPdf" value="original" checked><span class="radio-label">Keep Original Size</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageToPdf" value="percentage"><span class="radio-label">By Percentage (%)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageToPdf" value="dimensions"><span class="radio-label">By Width × Height (px)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-imageToPdf" value="filesize"><span class="radio-label">By Target File Size</span></label>
+          </div>
+          <div class="resize-controls" id="resizeControls-imageToPdf">
+            <div class="ctrl-sub" id="ctrl-percentage-imageToPdf" style="display:none">
+              <label class="ctrl-label">Scale: <strong id="pctValue-imageToPdf">100</strong>%</label>
+              <input type="range" class="slider" id="pctSlider-imageToPdf" min="10" max="200" value="100" step="1">
+            </div>
+            <div class="ctrl-sub" id="ctrl-dimensions-imageToPdf" style="display:none">
+              <div class="dim-row">
+                <div class="dim-field"><label>Width (px)</label><input type="number" id="dimW-imageToPdf" min="1" max="16384" placeholder="auto"></div>
+                <span class="dim-x">×</span>
+                <div class="dim-field"><label>Height (px)</label><input type="number" id="dimH-imageToPdf" min="1" max="16384" placeholder="auto"></div>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="aspectLock-imageToPdf" checked><span>Maintain Aspect Ratio</span></label>
+            </div>
+            <div class="ctrl-sub" id="ctrl-filesize-imageToPdf" style="display:none">
+              <div class="size-row">
+                <input type="number" class="size-input" id="targetSize-imageToPdf" min="1" placeholder="500" value="500">
+                <select class="size-unit" id="targetUnit-imageToPdf"><option value="KB" selected>KB</option><option value="MB">MB</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">2</span><h3>Compression Profile</h3></div>
+          <div class="radio-group" data-name="compProfile-imageToPdf">
+            <label class="radio-card active"><input type="radio" name="compProfile-imageToPdf" value="balanced" checked><span class="radio-label">Optimal Balance</span><span class="radio-desc">Quality 0.82 — 60-75% smaller</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-imageToPdf" value="smallest"><span class="radio-label">Maximum Size Reduction</span><span class="radio-desc">Quality 0.42 — smallest file</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-imageToPdf" value="lossless"><span class="radio-label">Maximum Quality / Lossless</span><span class="radio-desc">Quality 1.0 — zero compromise</span></label>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">3</span><h3>PDF Layout</h3></div>
+          <div class="radio-group" data-name="pdfLayout-imageToPdf">
+            <label class="radio-card active"><input type="radio" name="pdfLayout-imageToPdf" value="fitImage" checked><span class="radio-label">Fit Page to Image</span><span class="radio-desc">Page matches image dimensions</span></label>
+            <label class="radio-card"><input type="radio" name="pdfLayout-imageToPdf" value="a4"><span class="radio-label">A4 Portrait (Centered)</span><span class="radio-desc">210 × 297 mm with margins</span></label>
+            <label class="radio-card"><input type="radio" name="pdfLayout-imageToPdf" value="letter"><span class="radio-label">US Letter Portrait (Centered)</span><span class="radio-desc">8.5 × 11 in with margins</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar" id="actionBar-imageToPdf" style="display:none">
+        <button class="btn-primary btn-lg" id="processBtn-imageToPdf">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Build PDF &amp; Download
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══════════════ TAB: PDF COMPRESS ═══════════════ -->
+    <section class="tab-panel" id="panel-pdfCompress" role="tabpanel">
+      <div class="drop-zone" id="dropZone-pdfCompress" data-tab="pdfCompress">
+        <div class="drop-zone-content">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <p class="drop-text">Drag &amp; drop PDF files here or <label class="file-browse" tabindex="0">browse files<input type="file" id="fileInput-pdfCompress" multiple accept=".pdf" hidden></label></p>
+          <p class="drop-hint">PDF files only</p>
+        </div>
+      </div>
+      <div class="queue-section" id="queueSection-pdfCompress" style="display:none">
+        <div class="queue-header">
+          <h3 class="queue-title"><span id="queueCount-pdfCompress">0</span> file(s) queued</h3>
+          <button class="btn-ghost btn-sm" id="clearQueue-pdfCompress">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Queue
+          </button>
+        </div>
+        <div class="queue-list" id="queueList-pdfCompress"></div>
+      </div>
+      <div class="settings-grid" id="settings-pdfCompress" style="display:none">
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">1</span><h3>Resize Mode</h3></div>
+          <div class="radio-group" data-name="resizeMode-pdfCompress">
+            <label class="radio-card active"><input type="radio" name="resizeMode-pdfCompress" value="original" checked><span class="radio-label">Keep Original Size</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfCompress" value="percentage"><span class="radio-label">By Percentage (%)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfCompress" value="dimensions"><span class="radio-label">By Width × Height (px)</span></label>
+            <label class="radio-card"><input type="radio" name="resizeMode-pdfCompress" value="filesize"><span class="radio-label">By Target File Size</span></label>
+          </div>
+          <div class="resize-controls" id="resizeControls-pdfCompress">
+            <div class="ctrl-sub" id="ctrl-percentage-pdfCompress" style="display:none">
+              <label class="ctrl-label">Scale: <strong id="pctValue-pdfCompress">100</strong>%</label>
+              <input type="range" class="slider" id="pctSlider-pdfCompress" min="10" max="200" value="100" step="1">
+            </div>
+            <div class="ctrl-sub" id="ctrl-dimensions-pdfCompress" style="display:none">
+              <div class="dim-row">
+                <div class="dim-field"><label>Width (px)</label><input type="number" id="dimW-pdfCompress" min="1" max="16384" placeholder="auto"></div>
+                <span class="dim-x">×</span>
+                <div class="dim-field"><label>Height (px)</label><input type="number" id="dimH-pdfCompress" min="1" max="16384" placeholder="auto"></div>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="aspectLock-pdfCompress" checked><span>Maintain Aspect Ratio</span></label>
+            </div>
+            <div class="ctrl-sub" id="ctrl-filesize-pdfCompress" style="display:none">
+              <div class="size-row">
+                <input type="number" class="size-input" id="targetSize-pdfCompress" min="1" placeholder="2" value="2">
+                <select class="size-unit" id="targetUnit-pdfCompress"><option value="KB">KB</option><option value="MB" selected>MB</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">2</span><h3>Compression Profile</h3></div>
+          <div class="radio-group" data-name="compProfile-pdfCompress">
+            <label class="radio-card active"><input type="radio" name="compProfile-pdfCompress" value="balanced" checked><span class="radio-label">Optimal Balance</span><span class="radio-desc">Quality 0.82 — 60-75% smaller</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-pdfCompress" value="smallest"><span class="radio-label">Maximum Size Reduction</span><span class="radio-desc">Quality 0.42 — smallest file</span></label>
+            <label class="radio-card"><input type="radio" name="compProfile-pdfCompress" value="lossless"><span class="radio-label">Maximum Quality / Lossless</span><span class="radio-desc">Quality 1.0 — zero compromise</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar" id="actionBar-pdfCompress" style="display:none">
+        <button class="btn-primary btn-lg" id="processBtn-pdfCompress">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Compress &amp; Download
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══════════════ PROGRESS OVERLAY ═══════════════ -->
+    <div class="progress-overlay" id="progressOverlay" style="display:none">
+      <div class="progress-card">
+        <div class="progress-spinner"></div>
+        <h3 class="progress-title" id="progressTitle">Processing…</h3>
+        <p class="progress-status" id="progressStatus">Initializing…</p>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill" style="width:0%"></div>
+        </div>
+        <p class="progress-pct" id="progressPct">0%</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SUMMARY TABLE ═══════════════ -->
+    <section class="summary-section" id="summarySection" style="display:none">
+      <div class="summary-header">
+        <h3>Last Batch Compression Summary</h3>
+      </div>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Output File</th>
+              <th>Original Size</th>
+              <th>New Size</th>
+              <th>Final Dimensions</th>
+              <th>% Saved</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="app-footer">
+    <p>All processing happens locally in your browser. No files are ever uploaded.</p>
+  </footer>
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <script src="libs/jszip.min.js"></script>
+  <script src="libs/UTIF.js"></script>
+  <script src="libs/heic2any.min.js"></script>
+  <script src="libs/pdf-lib.min.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

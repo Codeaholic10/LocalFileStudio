@@ -1,0 +1,20 @@
+{
+  "name": "Local File Studio",
+  "short_name": "FileStudio",
+  "description": "Convert and resize images & PDFs entirely in your browser — zero uploads, zero servers.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#4f46e5",
+  "orientation": "any",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%234f46e5'/><path d='M160 140h192v64H160zm0 88h192v64H160zm0 88h128v64H160z' fill='%23e0e7ff'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
