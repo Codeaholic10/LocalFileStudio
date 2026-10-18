@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' blob:;">
-  <title>Local File Studio — Offline Image &amp; PDF Converter</title>
-  <meta name="description" content="Convert and resize images and PDFs entirely in your browser. Zero uploads, zero servers, 100% private and offline-ready.">
+  <title>Local File Studio — Offline Image, PDF &amp; Excel Converter</title>
+  <meta name="description" content="Convert and resize images, PDFs and Excel spreadsheets entirely in your browser. Zero uploads, zero servers, 100% private and offline-ready.">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4f46e5">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,6 +55,10 @@
       <button class="tab-btn" role="tab" aria-selected="false" data-tab="pdfCompress">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/></svg>
         <span>PDF Compress</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="excelToPdf">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Excel to PDF</span>
       </button>
     </nav>
 
@@ -382,6 +386,75 @@
       </div>
     </section>
 
+    <!-- ═══════════════ TAB: EXCEL TO PDF ═══════════════ -->
+    <section class="tab-panel" id="panel-excelToPdf" role="tabpanel">
+      <div class="drop-zone" id="dropZone-excelToPdf" data-tab="excelToPdf">
+        <div class="drop-zone-content">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <p class="drop-text">Drag &amp; drop Excel files here or <label class="file-browse" tabindex="0">browse files<input type="file" id="fileInput-excelToPdf" multiple accept=".xlsx,.xls,.csv,.ods" hidden></label></p>
+          <p class="drop-hint">XLSX, XLS, CSV, ODS spreadsheets</p>
+        </div>
+      </div>
+      <div class="queue-section" id="queueSection-excelToPdf" style="display:none">
+        <div class="queue-header">
+          <h3 class="queue-title"><span id="queueCount-excelToPdf">0</span> file(s) queued</h3>
+          <button class="btn-ghost btn-sm" id="clearQueue-excelToPdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Queue
+          </button>
+        </div>
+        <div class="queue-list" id="queueList-excelToPdf"></div>
+      </div>
+      <div class="settings-grid" id="settings-excelToPdf" style="display:none">
+        <!-- STEP 1: PAGE SIZE -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">1</span><h3>Page Size</h3></div>
+          <div class="radio-group" data-name="pageSize-excelToPdf">
+            <label class="radio-card active"><input type="radio" name="pageSize-excelToPdf" value="a4" checked><span class="radio-label">A4 (210 × 297 mm)</span></label>
+            <label class="radio-card"><input type="radio" name="pageSize-excelToPdf" value="letter"><span class="radio-label">US Letter (8.5 × 11 in)</span></label>
+            <label class="radio-card"><input type="radio" name="pageSize-excelToPdf" value="a3"><span class="radio-label">A3 (297 × 420 mm)</span></label>
+            <label class="radio-card"><input type="radio" name="pageSize-excelToPdf" value="legal"><span class="radio-label">US Legal (8.5 × 14 in)</span></label>
+          </div>
+        </div>
+        <!-- STEP 2: ORIENTATION -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">2</span><h3>Orientation</h3></div>
+          <div class="radio-group" data-name="orientation-excelToPdf">
+            <label class="radio-card active"><input type="radio" name="orientation-excelToPdf" value="auto" checked><span class="radio-label">Auto</span><span class="radio-desc">Landscape if columns &gt; 5, else portrait</span></label>
+            <label class="radio-card"><input type="radio" name="orientation-excelToPdf" value="portrait"><span class="radio-label">Portrait</span></label>
+            <label class="radio-card"><input type="radio" name="orientation-excelToPdf" value="landscape"><span class="radio-label">Landscape</span></label>
+          </div>
+        </div>
+        <!-- STEP 3: TABLE STYLE -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">3</span><h3>Table Style</h3></div>
+          <div class="radio-group" data-name="tableStyle-excelToPdf">
+            <label class="radio-card active"><input type="radio" name="tableStyle-excelToPdf" value="striped" checked><span class="radio-label">Striped Rows</span><span class="radio-desc">Alternating row shading for readability</span></label>
+            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="bordered"><span class="radio-label">Full Grid</span><span class="radio-desc">All cell borders visible</span></label>
+            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="minimal"><span class="radio-label">Minimal</span><span class="radio-desc">Header line only, clean look</span></label>
+          </div>
+        </div>
+        <!-- STEP 4: FONT SIZE -->
+        <div class="settings-card">
+          <div class="card-header"><span class="step-badge">4</span><h3>Font Size</h3></div>
+          <div class="radio-group" data-name="fontSize-excelToPdf">
+            <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="8"><span class="radio-label">Small (8pt)</span><span class="radio-desc">More data per page</span></label>
+            <label class="radio-card active"><input type="radio" name="fontSize-excelToPdf" value="10" checked><span class="radio-label">Medium (10pt)</span><span class="radio-desc">Balanced readability</span></label>
+            <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="12"><span class="radio-label">Large (12pt)</span><span class="radio-desc">Easy to read</span></label>
+            <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="auto"><span class="radio-label">Auto-fit</span><span class="radio-desc">Shrink to fit all columns</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar" id="actionBar-excelToPdf" style="display:none">
+        <button class="btn-primary btn-lg" id="processBtn-excelToPdf">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Convert to PDF &amp; Download
+        </button>
+      </div>
+    </section>
+
     <!-- ═══════════════ PROGRESS OVERLAY ═══════════════ -->
     <div class="progress-overlay" id="progressOverlay" style="display:none">
       <div class="progress-card">
@@ -427,6 +500,7 @@
   <script src="libs/UTIF.js"></script>
   <script src="libs/heic2any.min.js"></script>
   <script src="libs/pdf-lib.min.js"></script>
+  <script src="libs/xlsx.full.min.js"></script>
   <script src="engine.js"></script>
   <script src="app.js"></script>
   <script>

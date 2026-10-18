@@ -1,5 +1,5 @@
 // sw.js — Service Worker for Local File Studio (offline-first PWA)
-const CACHE_NAME = 'local-file-studio-v1';
+const CACHE_NAME = 'local-file-studio-v2';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -14,6 +14,7 @@ const ASSETS_TO_CACHE = [
   './libs/jszip.min.js',
   './libs/heic2any.min.js',
   './libs/UTIF.js',
+  './libs/xlsx.full.min.js',
 ];
 
 // Install: pre-cache all local assets

@@ -12,6 +12,7 @@
     pdfToImage:   [],
     imageToPdf:   [],
     pdfCompress:  [],
+    excelToPdf:   [],
   };
 
   const ACCEPTED = {
@@ -19,6 +20,7 @@
     pdfToImage:   new Set(['pdf']),
     imageToPdf:   new Set(['png','jpg','jpeg','webp','avif','bmp','gif','svg','tif','tiff','heic','heif']),
     pdfCompress:  new Set(['pdf']),
+    excelToPdf:   new Set(['xlsx','xls','csv','ods']),
   };
 
   let processing = false;
@@ -64,7 +66,7 @@
   }
 
   // ─── PERCENTAGE SLIDERS ─── ───────────────────────────────────
-  ['imageConvert', 'pdfToImage', 'imageToPdf', 'pdfCompress'].forEach(tab => {
+  ['imageConvert', 'pdfToImage', 'imageToPdf', 'pdfCompress', 'excelToPdf'].forEach(tab => {
     const slider = $(`#pctSlider-${tab}`);
     const label = $(`#pctValue-${tab}`);
     if (slider && label) {
@@ -187,6 +189,14 @@
     if (resizeMode === 'filesize') {
       s.targetSize = $(`#targetSize-${tab}`)?.value || '500';
       s.targetUnit = $(`#targetUnit-${tab}`)?.value || 'KB';
+    }
+
+    // Excel-specific settings
+    if (tab === 'excelToPdf') {
+      s.excelPageSize = document.querySelector(`input[name="pageSize-${tab}"]:checked`)?.value || 'a4';
+      s.excelOrientation = document.querySelector(`input[name="orientation-${tab}"]:checked`)?.value || 'auto';
+      s.excelTableStyle = document.querySelector(`input[name="tableStyle-${tab}"]:checked`)?.value || 'striped';
+      s.excelFontSize = document.querySelector(`input[name="fontSize-${tab}"]:checked`)?.value || '10';
     }
 
     return s;
@@ -384,6 +394,49 @@
         newSize: r.newSize,
         width: r.width,
         height: r.height,
+      })));
+    } catch (err) {
+      console.error(err);
+      alert('Error during processing: ' + err.message);
+    } finally {
+      hideProgress();
+    }
+  });
+
+  // ─── WORKFLOW: EXCEL TO PDF ─── ────────────────────────────────
+  $(`#processBtn-excelToPdf`).addEventListener('click', async () => {
+    const files = queues.excelToPdf;
+    if (files.length === 0 || processing) return;
+
+    const settings = gatherSettings('excelToPdf');
+    showProgress('Converting Excel to PDF…');
+
+    try {
+      const results = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const result = await FileEngine.excelToPdf(files[i], settings, (status, frac) => {
+          const overall = (i + frac) / files.length;
+          updateProgress(status, overall);
+        });
+        results.push(result);
+      }
+
+      updateProgress('Packaging download…', 0.95);
+
+      if (results.length === 1) {
+        downloadBlob(results[0].blob, results[0].filename);
+      } else {
+        const zipBlob = await FileEngine.buildZip(results);
+        downloadBlob(zipBlob, 'excel_pdfs.zip');
+      }
+
+      showSummary(results.map(r => ({
+        filename: r.filename,
+        originalSize: r.originalSize,
+        newSize: r.newSize,
+        width: 0,
+        height: 0,
       })));
     } catch (err) {
       console.error(err);

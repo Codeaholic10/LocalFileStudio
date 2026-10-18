@@ -1,9 +1,9 @@
 # LocalFileStudio
 
-> **100% Client-Side Offline Image & PDF Processing Suite (PWA)**  
+> **100% Client-Side Offline Image, PDF & Excel Processing Suite (PWA)**  
 > Zero server uploads. Zero external API calls. Zero privacy leaks. Zero paid subscriptions.
 
-Local File Studio is an air-gapped ready Progressive Web App designed for high-performance in-browser image conversion, dimension resizing, target-size compression, PDF rasterization, multi-image PDF compilation, and PDF optimization.
+Local File Studio is an air-gapped ready Progressive Web App designed for high-performance in-browser image conversion, dimension resizing, target-size compression, PDF rasterization, multi-image PDF compilation, PDF optimization, and Excel-to-PDF table rendering.
 
 ---
 
@@ -37,6 +37,19 @@ Local File Studio is an air-gapped ready Progressive Web App designed for high-p
 ### 4. 🗜️ PDF Compress & Flatten
 - **Visual Optimization Pipeline:** Rasterizes heavy vector PDF pages to optimized JPEG/WEBP streams and recompiles a lightweight PDF.
 - **Configurable DPI & Quality:** Balance visual clarity against file weight with real-time byte savings reporting.
+
+### 5. 📊 Excel to PDF
+- **Universal Spreadsheet Input:** XLSX, XLS, CSV, and ODS formats via SheetJS.
+- **Multi-Sheet Support:** Each sheet rendered as its own set of paginated pages with automatic header detection.
+- **Page Size Options:** A4, US Letter, A3, or US Legal.
+- **Orientation Control:** Auto (landscape when columns > 5), Portrait, or Landscape.
+- **Table Styling:**
+  - Striped Rows — alternating shading for scan-friendly readability
+  - Full Grid — every cell border visible
+  - Minimal — header underline only, clean modern look
+- **Font Size Options:** Small (8pt), Medium (10pt), Large (12pt), or Auto-fit to shrink text until all columns fit.
+- **Smart Column Widths:** Proportional sizing based on content length.
+- **Content-Aware Truncation:** Long cell values are truncated with "…" to fit, using binary-search width measurement.
 
 ---
 
@@ -92,6 +105,7 @@ Open `http://localhost:3000` in any modern web browser (Chrome, Edge, Firefox, S
 | **JSZip** | 3.10.1 | Client-side compression and bulk download bundling |
 | **heic2any** | 0.0.4 | Apple HEIC/HEIF photo decoding |
 | **UTIF.js** | latest | TIFF bitmap decoding |
+| **SheetJS (xlsx)** | 0.20.3 | Client-side Excel/CSV/ODS spreadsheet parsing |
 | **Vanilla JS & CSS** | Native | Zero-dependency responsive UI, micro-animations, dark mode |
 
 ---

@@ -16,6 +16,7 @@ declare -A DOWNLOADS=(
   ["jszip.min.js"]="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"
   ["heic2any.min.js"]="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"
   ["UTIF.js"]="https://unpkg.com/utif@3.1.0/UTIF.js"
+  ["xlsx.full.min.js"]="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
 )
 
 for name in "${!DOWNLOADS[@]}"; do

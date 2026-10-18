@@ -32,6 +32,10 @@ $downloads = @(
     @{
         Name = "UTIF.js"
         Url  = "https://unpkg.com/utif@3.1.0/UTIF.js"
+    },
+    @{
+        Name = "xlsx.full.min.js"
+        Url  = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
     }
 )
 
