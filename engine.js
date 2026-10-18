@@ -577,6 +577,33 @@ const FileEngine = (() => {
     legal:  { width: 612, height: 1008 },
   };
 
+  // Cache of character encodability in PDF StandardFonts (WinAnsi)
+  const encodableCharCache = new Map();
+  function isCharEncodable(char, fontObj) {
+    const code = char.charCodeAt(0);
+    if (code >= 32 && code <= 126) return true;
+    if (code < 32) return false;
+    if (encodableCharCache.has(char)) return encodableCharCache.get(char);
+    try {
+      fontObj.widthOfTextAtSize(char, 10);
+      encodableCharCache.set(char, true);
+      return true;
+    } catch {
+      encodableCharCache.set(char, false);
+      return false;
+    }
+  }
+
+  function cleanTextForPdf(text, fontObj) {
+    if (text === null || text === undefined) return '';
+    const str = String(text).replace(/[\r\n]+/g, ' ').replace(/\t/g, '  ');
+    let out = '';
+    for (const ch of str) {
+      out += isCharEncodable(ch, fontObj) ? ch : '?';
+    }
+    return out;
+  }
+
   async function excelToPdf(file, settings, onProgress) {
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
 
@@ -585,6 +612,10 @@ const FileEngine = (() => {
     // Parse Excel file with SheetJS
     const buf = await file.arrayBuffer();
     const workbook = XLSX.read(buf, { type: 'array', cellDates: true, cellStyles: true });
+
+    if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+      throw new Error('No sheets found in spreadsheet');
+    }
 
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -596,8 +627,7 @@ const FileEngine = (() => {
     const fontSizePref = settings.excelFontSize || '10';
 
     const margin = 40; // points
-    const headerRowHeight = 20;
-    const cellPadding = 4;
+    const basePadding = 4;
 
     let totalSheets = workbook.SheetNames.length;
     let sheetsProcessed = 0;
@@ -606,15 +636,17 @@ const FileEngine = (() => {
       if (onProgress) onProgress(`Processing sheet: ${sheetName}…`, sheetsProcessed / totalSheets);
 
       const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) { sheetsProcessed++; continue; }
+
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
 
       // Skip empty sheets
-      if (jsonData.length === 0) { sheetsProcessed++; continue; }
+      if (!jsonData || jsonData.length === 0) { sheetsProcessed++; continue; }
 
       // Determine max column count
       let maxCols = 0;
       for (const row of jsonData) {
-        if (row.length > maxCols) maxCols = row.length;
+        if (row && row.length > maxCols) maxCols = row.length;
       }
       if (maxCols === 0) { sheetsProcessed++; continue; }
 
@@ -627,25 +659,30 @@ const FileEngine = (() => {
       const pageW = landscape ? pageDims.height : pageDims.width;
       const pageH = landscape ? pageDims.width : pageDims.height;
 
-      const usableW = pageW - 2 * margin;
-      const usableH = pageH - 2 * margin;
+      const usableW = Math.max(100, pageW - 2 * margin);
+      const usableH = Math.max(100, pageH - 2 * margin);
+
+      // Proportional padding based on column count
+      const cellPadding = Math.max(2, Math.min(basePadding, Math.floor(usableW / (maxCols * 4))));
 
       // Compute column widths based on content
-      const colMaxChars = new Array(maxCols).fill(2);
+      const colMaxChars = new Array(maxCols).fill(3);
       for (const row of jsonData) {
+        if (!row) continue;
         for (let c = 0; c < maxCols; c++) {
-          const cell = row[c] !== undefined ? String(row[c]) : '';
+          const cell = row[c] !== undefined && row[c] !== null ? String(row[c]) : '';
           colMaxChars[c] = Math.max(colMaxChars[c], Math.min(cell.length, 40));
         }
       }
       const totalChars = colMaxChars.reduce((a, b) => a + b, 0);
-      const colWidths = colMaxChars.map(ch => (ch / totalChars) * usableW);
+      const rawWidths = colMaxChars.map(ch => Math.max(15, (ch / totalChars) * usableW));
+      const currentTotalW = rawWidths.reduce((a, b) => a + b, 0);
+      const colWidths = rawWidths.map(w => (w / currentTotalW) * usableW);
 
       // Font size calculation
       let fontSize;
       if (fontSizePref === 'auto') {
-        // Calculate based on fitting all columns
-        const avgCharWidth = 0.5; // approximate ratio for Helvetica
+        const avgCharWidth = 0.5;
         const minNeeded = colMaxChars.reduce((sum, ch) => sum + ch * avgCharWidth, 0) + maxCols * cellPadding * 2;
         fontSize = Math.min(12, Math.max(5, Math.floor(usableW / minNeeded)));
       } else {
@@ -668,16 +705,17 @@ const FileEngine = (() => {
       const headerRow = hasHeader ? jsonData[0] : null;
       const dataRows = hasHeader ? jsonData.slice(1) : jsonData;
 
-      // Paginate rows
+      // Paginate rows (at least 1 page even if dataRows is empty)
       const rowsPerPage = Math.max(1, Math.floor((usableH - (headerRow ? headerHeight : 0) - 20) / rowHeight));
-      const totalPages = Math.ceil(dataRows.length / rowsPerPage);
+      const totalPages = Math.max(1, Math.ceil(dataRows.length / rowsPerPage));
 
       for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
         const page = pdfDoc.addPage([pageW, pageH]);
         let y = pageH - margin;
 
         // Sheet name + page number at top
-        const titleText = totalSheets > 1 ? `${sheetName}` : file.name.replace(/\.[^/.]+$/, '');
+        const rawTitle = totalSheets > 1 ? `${sheetName}` : file.name.replace(/\.[^/.]+$/, '');
+        const titleText = cleanTextForPdf(rawTitle, fontBold);
         page.drawText(titleText, {
           x: margin,
           y: y - fontSize,
@@ -700,7 +738,6 @@ const FileEngine = (() => {
 
         // Draw header row
         if (headerRow) {
-          // Header background
           page.drawRectangle({
             x: margin,
             y: y - headerHeight,
@@ -711,14 +748,17 @@ const FileEngine = (() => {
 
           let hx = margin;
           for (let c = 0; c < maxCols; c++) {
-            const cellText = truncateText(String(headerRow[c] || ''), colWidths[c] - cellPadding * 2, fontBold, fontSize);
-            page.drawText(cellText, {
-              x: hx + cellPadding,
-              y: y - headerHeight + cellPadding + 2,
-              size: fontSize,
-              font: fontBold,
-              color: headerTextColor,
-            });
+            const availW = Math.max(0, colWidths[c] - cellPadding * 2);
+            const cellText = truncateText(String(headerRow[c] !== undefined && headerRow[c] !== null ? headerRow[c] : ''), availW, fontBold, fontSize);
+            if (cellText) {
+              page.drawText(cellText, {
+                x: hx + cellPadding,
+                y: y - headerHeight + cellPadding + 2,
+                size: fontSize,
+                font: fontBold,
+                color: headerTextColor,
+              });
+            }
             hx += colWidths[c];
           }
           y -= headerHeight;
@@ -771,21 +811,24 @@ const FileEngine = (() => {
           // Cell text
           let cx = margin;
           for (let c = 0; c < maxCols; c++) {
-            const rawVal = row[c] !== undefined ? row[c] : '';
+            const rawVal = row[c] !== undefined && row[c] !== null ? row[c] : '';
             let cellStr;
             if (rawVal instanceof Date) {
               cellStr = rawVal.toLocaleDateString();
             } else {
               cellStr = String(rawVal);
             }
-            const cellText = truncateText(cellStr, colWidths[c] - cellPadding * 2, font, fontSize);
-            page.drawText(cellText, {
-              x: cx + cellPadding,
-              y: y - rowHeight + cellPadding + 1,
-              size: fontSize,
-              font: font,
-              color: textColor,
-            });
+            const availW = Math.max(0, colWidths[c] - cellPadding * 2);
+            const cellText = truncateText(cellStr, availW, font, fontSize);
+            if (cellText) {
+              page.drawText(cellText, {
+                x: cx + cellPadding,
+                y: y - rowHeight + cellPadding + 1,
+                size: fontSize,
+                font: font,
+                color: textColor,
+              });
+            }
             cx += colWidths[c];
           }
 
@@ -815,6 +858,19 @@ const FileEngine = (() => {
       sheetsProcessed++;
     }
 
+    // Ensure at least one page exists
+    if (pdfDoc.getPageCount() === 0) {
+      const pageDims = EXCEL_PAGE_SIZES[pageSize] || EXCEL_PAGE_SIZES.a4;
+      const page = pdfDoc.addPage([pageDims.width, pageDims.height]);
+      page.drawText('The spreadsheet contains no data or empty sheets.', {
+        x: margin,
+        y: pageDims.height - margin - 20,
+        size: 11,
+        font: font,
+        color: textColor,
+      });
+    }
+
     if (onProgress) onProgress('Saving PDF…', 0.95);
     const pdfBytes = await pdfDoc.save();
     const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -825,31 +881,34 @@ const FileEngine = (() => {
       originalSize: file.size,
       newSize: pdfBlob.size,
       sheets: totalSheets,
+      pages: pdfDoc.getPageCount(),
     };
   }
 
   // Truncate text to fit within a given pixel width
   function truncateText(text, maxWidth, fontObj, fontSize) {
+    if (!text || maxWidth <= 0) return '';
+    text = cleanTextForPdf(text, fontObj);
     if (!text) return '';
-    // Replace newlines and tabs
-    text = text.replace(/[\r\n]+/g, ' ').replace(/\t/g, '  ');
     try {
       let tw = fontObj.widthOfTextAtSize(text, fontSize);
       if (tw <= maxWidth) return text;
+      const ellipsis = '...';
+      const ellipsisW = fontObj.widthOfTextAtSize(ellipsis, fontSize);
+      if (ellipsisW > maxWidth) return '';
       // Binary search for truncation point
       let lo = 0, hi = text.length;
       while (lo < hi) {
         const mid = Math.ceil((lo + hi) / 2);
-        const tryStr = text.substring(0, mid) + '…';
+        const tryStr = text.substring(0, mid) + ellipsis;
         if (fontObj.widthOfTextAtSize(tryStr, fontSize) <= maxWidth) {
           lo = mid;
         } else {
           hi = mid - 1;
         }
       }
-      return lo > 0 ? text.substring(0, lo) + '…' : '…';
+      return lo > 0 ? text.substring(0, lo) + ellipsis : ellipsis;
     } catch {
-      // Fallback for characters not in the font
       return text.substring(0, Math.max(1, Math.floor(maxWidth / (fontSize * 0.5))));
     }
   }

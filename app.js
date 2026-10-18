@@ -75,7 +75,7 @@
   });
 
   // ─── DRAG & DROP + FILE INPUT ─── ─────────────────────────────
-  ['imageConvert', 'pdfToImage', 'imageToPdf', 'pdfCompress'].forEach(tab => {
+  ['imageConvert', 'pdfToImage', 'imageToPdf', 'pdfCompress', 'excelToPdf'].forEach(tab => {
     const dropZone = $(`#dropZone-${tab}`);
     const fileInput = $(`#fileInput-${tab}`);
 
@@ -167,8 +167,8 @@
 
     const s = { resizeMode, profile };
 
-    // Output format (not for imageToPdf or pdfCompress)
-    if (tab !== 'imageToPdf' && tab !== 'pdfCompress') {
+    // Output format (not for imageToPdf, pdfCompress, or excelToPdf)
+    if (tab !== 'imageToPdf' && tab !== 'pdfCompress' && tab !== 'excelToPdf') {
       s.outputFormat = document.querySelector(`input[name="outputFormat-${tab}"]:checked`)?.value || 'webp';
     }
 
@@ -244,11 +244,12 @@
     body.innerHTML = rows.map(r => {
       const saved = r.originalSize > 0 ? ((1 - r.newSize / r.originalSize) * 100) : 0;
       const savedClass = saved >= 0 ? 'saved-positive' : 'saved-negative';
+      const dimOrPages = r.width && r.height ? `${r.width}×${r.height}` : (r.pages ? `${r.pages} page(s)` : '—');
       return `<tr>
         <td>${escHtml(r.filename)}</td>
         <td>${FileEngine.formatBytes(r.originalSize)}</td>
         <td>${FileEngine.formatBytes(r.newSize)}</td>
-        <td>${r.width}×${r.height}</td>
+        <td>${dimOrPages}</td>
         <td class="${savedClass}">${saved >= 0 ? '' : '+'}${saved.toFixed(1)}%</td>
       </tr>`;
     }).join('');
@@ -437,6 +438,7 @@
         newSize: r.newSize,
         width: 0,
         height: 0,
+        pages: r.pages || 1,
       })));
     } catch (err) {
       console.error(err);
