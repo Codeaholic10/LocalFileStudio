@@ -195,8 +195,8 @@
     if (tab === 'excelToPdf') {
       s.excelPageSize = document.querySelector(`input[name="pageSize-${tab}"]:checked`)?.value || 'a4';
       s.excelOrientation = document.querySelector(`input[name="orientation-${tab}"]:checked`)?.value || 'auto';
-      s.excelTableStyle = document.querySelector(`input[name="tableStyle-${tab}"]:checked`)?.value || 'striped';
-      s.excelFontSize = document.querySelector(`input[name="fontSize-${tab}"]:checked`)?.value || '10';
+      s.excelTableStyle = document.querySelector(`input[name="tableStyle-${tab}"]:checked`)?.value || 'excel';
+      s.excelFontSize = document.querySelector(`input[name="fontSize-${tab}"]:checked`)?.value || 'auto';
     }
 
     return s;

@@ -431,19 +431,20 @@
         <div class="settings-card">
           <div class="card-header"><span class="step-badge">3</span><h3>Table Style</h3></div>
           <div class="radio-group" data-name="tableStyle-excelToPdf">
-            <label class="radio-card active"><input type="radio" name="tableStyle-excelToPdf" value="striped" checked><span class="radio-label">Striped Rows</span><span class="radio-desc">Alternating row shading for readability</span></label>
-            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="bordered"><span class="radio-label">Full Grid</span><span class="radio-desc">All cell borders visible</span></label>
-            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="minimal"><span class="radio-label">Minimal</span><span class="radio-desc">Header line only, clean look</span></label>
+            <label class="radio-card active"><input type="radio" name="tableStyle-excelToPdf" value="excel" checked><span class="radio-label">Excel Standard</span><span class="radio-desc">Exact spreadsheet grid, alignments &amp; formatting</span></label>
+            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="striped"><span class="radio-label">Striped Rows</span><span class="radio-desc">Alternating row shading</span></label>
+            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="bordered"><span class="radio-label">Full Grid</span><span class="radio-desc">All borders clearly outlined</span></label>
+            <label class="radio-card"><input type="radio" name="tableStyle-excelToPdf" value="minimal"><span class="radio-label">Minimal</span><span class="radio-desc">Header underline only</span></label>
           </div>
         </div>
         <!-- STEP 4: FONT SIZE -->
         <div class="settings-card">
           <div class="card-header"><span class="step-badge">4</span><h3>Font Size</h3></div>
           <div class="radio-group" data-name="fontSize-excelToPdf">
+            <label class="radio-card active"><input type="radio" name="fontSize-excelToPdf" value="auto" checked><span class="radio-label">Auto-fit (Recommended)</span><span class="radio-desc">Scales dynamically to fit all columns &amp; content</span></label>
+            <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="10"><span class="radio-label">Medium (10pt)</span><span class="radio-desc">Standard spreadsheet size</span></label>
             <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="8"><span class="radio-label">Small (8pt)</span><span class="radio-desc">More data per page</span></label>
-            <label class="radio-card active"><input type="radio" name="fontSize-excelToPdf" value="10" checked><span class="radio-label">Medium (10pt)</span><span class="radio-desc">Balanced readability</span></label>
             <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="12"><span class="radio-label">Large (12pt)</span><span class="radio-desc">Easy to read</span></label>
-            <label class="radio-card"><input type="radio" name="fontSize-excelToPdf" value="auto"><span class="radio-label">Auto-fit</span><span class="radio-desc">Shrink to fit all columns</span></label>
           </div>
         </div>
       </div>
