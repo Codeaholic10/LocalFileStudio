@@ -724,8 +724,8 @@ const FileEngine = (() => {
     const tableStyle = settings.excelTableStyle || 'excel';
     const fontSizePref = settings.excelFontSize || 'auto';
 
-    const margin = 32; // Points (clean ~0.44 inch margin for maximum table area)
-    const cellPadding = 4;
+    const margin = 24; // Points (~0.33 inch margin)
+    const baseCellPadding = 4;
 
     const totalSheets = workbook.SheetNames.length;
     let sheetsProcessed = 0;
@@ -748,62 +748,6 @@ const FileEngine = (() => {
         continue;
       }
 
-      // Trim trailing empty rows so we don't output dozens of blank lines
-      let effectiveEndRow = range.e.r;
-      while (effectiveEndRow >= range.s.r) {
-        let rowHasData = false;
-        for (let c = range.s.c; c <= range.e.c; c++) {
-          const addr = XLSX.utils.encode_cell({ r: effectiveEndRow, c });
-          if (worksheet[addr] && getCellFormattedText(worksheet[addr]).trim() !== '') {
-            rowHasData = true;
-            break;
-          }
-        }
-        if (rowHasData) break;
-        effectiveEndRow--;
-      }
-
-      if (effectiveEndRow < range.s.r) {
-        // Completely blank sheet
-        sheetsProcessed++;
-        continue;
-      }
-
-      const totalActiveRows = effectiveEndRow - range.s.r + 1;
-
-      // Determine page orientation
-      let landscape = false;
-      if (orientationPref === 'landscape') {
-        landscape = true;
-      } else if (orientationPref === 'portrait') {
-        landscape = false;
-      } else {
-        // Auto: landscape if more than 6 columns or wide sheet
-        landscape = numCols > 6;
-      }
-
-      const pageDims = EXCEL_PAGE_SIZES[pageSize] || EXCEL_PAGE_SIZES.a4;
-      const pageW = landscape ? pageDims.height : pageDims.width;
-      const pageH = landscape ? pageDims.width : pageDims.height;
-
-      const usableW = Math.max(100, pageW - 2 * margin);
-      const usableH = Math.max(100, pageH - 2 * margin);
-
-      // Determine base font size
-      let fontSize;
-      if (fontSizePref === 'auto') {
-        if (numCols <= 6) fontSize = 10;
-        else if (numCols <= 9) fontSize = 9;
-        else if (numCols <= 13) fontSize = 8;
-        else if (numCols <= 18) fontSize = 7;
-        else fontSize = 6;
-      } else {
-        fontSize = parseInt(fontSizePref, 10) || 10;
-      }
-
-      const lineHeight = fontSize * 1.25;
-
-      // Map merged cells
       const merges = worksheet['!merges'] || [];
       const mergeMap = new Map();
       for (const m of merges) {
@@ -820,322 +764,294 @@ const FileEngine = (() => {
         }
       }
 
-      // Calculate column widths: respect worksheet['!cols'] if present, else content width
+      // Trim trailing empty rows (keeping any covered by merges)
+      let effectiveEndRow = range.e.r;
+      while (effectiveEndRow >= range.s.r) {
+        let rowHasData = false;
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const addr = XLSX.utils.encode_cell({ r: effectiveEndRow, c });
+          if (worksheet[addr] && getCellFormattedText(worksheet[addr]).trim() !== '') {
+            rowHasData = true;
+            break;
+          }
+        }
+        if (rowHasData) break;
+        for (const m of merges) {
+          if (effectiveEndRow >= m.s.r && effectiveEndRow <= m.e.r) {
+            rowHasData = true;
+            break;
+          }
+        }
+        if (rowHasData) break;
+        effectiveEndRow--;
+      }
+
+      if (effectiveEndRow < range.s.r) {
+        // Completely blank sheet
+        sheetsProcessed++;
+        continue;
+      }
+
+      // Trim trailing empty columns (keeping any covered by merges)
+      let effectiveEndCol = range.e.c;
+      while (effectiveEndCol >= range.s.c) {
+        let colHasData = false;
+        for (let r = range.s.r; r <= effectiveEndRow; r++) {
+          const addr = XLSX.utils.encode_cell({ r, c: effectiveEndCol });
+          if (worksheet[addr] && getCellFormattedText(worksheet[addr]).trim() !== '') {
+            colHasData = true;
+            break;
+          }
+        }
+        if (colHasData) break;
+        for (const m of merges) {
+          if (effectiveEndCol >= m.s.c && effectiveEndCol <= m.e.c) {
+            colHasData = true;
+            break;
+          }
+        }
+        if (colHasData) break;
+        effectiveEndCol--;
+      }
+
+      if (effectiveEndCol < range.s.c) {
+        sheetsProcessed++;
+        continue;
+      }
+
+      const activeNumCols = effectiveEndCol - range.s.c + 1;
+      const activeNumRows = effectiveEndRow - range.s.r + 1;
+
+      // Base font size
+      let baseFontSize = 10;
+      if (fontSizePref === '8') baseFontSize = 8;
+      else if (fontSizePref === '12') baseFontSize = 12;
+      else if (fontSizePref === '10') baseFontSize = 10;
+      else {
+        // Auto: initial base size
+        if (activeNumCols <= 6) baseFontSize = 10;
+        else if (activeNumCols <= 10) baseFontSize = 9;
+        else if (activeNumCols <= 15) baseFontSize = 8;
+        else baseFontSize = 7;
+      }
+
+      // Measure unscaled column widths
       const colExplicit = worksheet['!cols'] || [];
       const rawColWidths = [];
 
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const colIdx = c - range.s.c;
+      for (let c = range.s.c; c <= effectiveEndCol; c++) {
         const colDef = colExplicit[c];
         let w = 0;
 
-        if (colDef) {
+        if (colDef && !colDef.hidden) {
           if (colDef.wpx) w = colDef.wpx * 0.75;
-          else if (colDef.wch) w = colDef.wch * 7.0;
-          else if (colDef.width) w = colDef.width * 7.0;
+          else if (colDef.wch) w = colDef.wch * 7.2;
+          else if (colDef.width) w = colDef.width * 7.2;
         }
 
         if (w <= 0) {
-          // Content-based measurement
+          // Content-based measurement (ignoring multi-column merge headers to avoid inflating single columns)
           let maxChars = 3;
           for (let r = range.s.r; r <= effectiveEndRow; r++) {
+            const mergeInfo = mergeMap.get(`${r},${c}`);
+            if (mergeInfo && mergeInfo.colspan > 1) continue;
             const addr = XLSX.utils.encode_cell({ r, c });
             const cell = worksheet[addr];
             const text = getCellFormattedText(cell);
             if (text.length > maxChars) {
-              maxChars = Math.min(text.length, 50);
+              maxChars = Math.min(text.length, 45);
             }
           }
-          w = maxChars * (fontSize * 0.58) + cellPadding * 2 + 6;
+          w = maxChars * (baseFontSize * 0.58) + baseCellPadding * 2 + 8;
         }
 
-        rawColWidths[colIdx] = Math.max(w, 20);
+        rawColWidths.push(Math.max(22, w));
       }
 
-      // Proportional normalization to exactly fit usableW
-      const totalRawW = rawColWidths.reduce((a, b) => a + b, 0);
-      const colWidths = rawColWidths.map(w => Math.max(16, (w / totalRawW) * usableW));
-      const normalizedTotalW = colWidths.reduce((a, b) => a + b, 0);
-      for (let i = 0; i < colWidths.length; i++) {
-        colWidths[i] = (colWidths[i] / normalizedTotalW) * usableW;
+      // Measure unscaled row heights
+      const rowExplicit = worksheet['!rows'] || [];
+      const rawRowHeights = [];
+
+      for (let r = range.s.r; r <= effectiveEndRow; r++) {
+        const rowDef = rowExplicit[r];
+        let h = 0;
+
+        if (rowDef && !rowDef.hidden) {
+          if (rowDef.hpt) h = rowDef.hpt;
+          else if (rowDef.hpx) h = rowDef.hpx * 0.75;
+        }
+
+        if (h <= 0) {
+          h = baseFontSize * 1.35 + baseCellPadding * 2 + 2;
+        }
+
+        rawRowHeights.push(Math.max(14, h));
       }
 
-      // Detect header row (row 0 or range.s.r)
-      const firstRowIdx = range.s.r;
-      let hasHeader = false;
-      if (worksheet['!autofilter']) {
-        hasHeader = true;
+      const totalTableW = rawColWidths.reduce((a, b) => a + b, 0);
+      const totalTableH = rawRowHeights.reduce((a, b) => a + b, 0);
+
+      // Determine page orientation
+      let landscape = false;
+      if (orientationPref === 'landscape') {
+        landscape = true;
+      } else if (orientationPref === 'portrait') {
+        landscape = false;
       } else {
-        let textCount = 0;
-        for (let c = range.s.c; c <= range.e.c; c++) {
-          const addr = XLSX.utils.encode_cell({ r: firstRowIdx, c });
-          const cell = worksheet[addr];
-          if (cell && (cell.t === 's' || typeof cell.v === 'string') && String(cell.v).trim().length > 0 && isNaN(Number(cell.v))) {
-            textCount++;
-          }
-        }
-        hasHeader = textCount >= Math.min(2, numCols);
+        // Auto: landscape if table is wider than tall
+        landscape = totalTableW > totalTableH;
       }
 
-      // Colors matching authentic Excel styling
-      const excelGridBorder = rgb(0.83, 0.85, 0.88); // #D4D8DE - subtle Excel gridline
+      const pageDims = EXCEL_PAGE_SIZES[pageSize] || EXCEL_PAGE_SIZES.a4;
+      const pageW = landscape ? pageDims.height : pageDims.width;
+      const pageH = landscape ? pageDims.width : pageDims.height;
+
+      const usableW = Math.max(100, pageW - 2 * margin);
+      const usableH = Math.max(100, pageH - 2 * margin);
+
+      // FIT SHEET ON ONE PAGE: Uniform scale factor so all rows and columns fit on 1 page!
+      const scaleW = usableW / totalTableW;
+      const scaleH = usableH / totalTableH;
+      let scale = Math.min(scaleW, scaleH);
+      if (scale > 1.15) scale = 1.0; // Don't blow up small tables
+
+      const scaledColW = rawColWidths.map(w => w * scale);
+      const scaledRowH = rawRowHeights.map(h => h * scale);
+      const scaledTotalW = scaledColW.reduce((a, b) => a + b, 0);
+      const scaledTotalH = scaledRowH.reduce((a, b) => a + b, 0);
+
+      const cellFontSize = Math.max(2.8, Math.min(12, baseFontSize * scale));
+      const pad = Math.max(0.5, baseCellPadding * scale);
+      const lineHeight = cellFontSize * 1.22;
+
+      // Position: Centered horizontally and vertically (or aligned near top)
+      const startX = margin + Math.max(0, (usableW - scaledTotalW) / 2);
+      const startY = pageH - margin - Math.max(0, (usableH - scaledTotalH) / 2);
+
+      // Colors
+      const excelGridBorder = rgb(0.83, 0.84, 0.87); // #D4D6DE - authentic Excel gridline
       const excelHeaderBg = rgb(0.95, 0.96, 0.98);   // #F1F5F9 - clean header tint
-      const excelStripeBg = rgb(0.97, 0.98, 0.99);   // #F8FAFC - gentle stripe
       const textPrimary = rgb(0.06, 0.09, 0.16);     // #0F172A - crisp dark text
       const textHeader = rgb(0.12, 0.16, 0.23);      // #1E293B - bold header text
       const borderDark = rgb(0.68, 0.72, 0.78);      // #AEB8C6 - structured border
 
-      // Pre-calculate wrapped lines and row heights for every row
-      const preppedRows = [];
-      const rowHeights = [];
+      // Add EXACTLY ONE page for this entire sheet
+      const page = pdfDoc.addPage([pageW, pageH]);
+      let currentY = startY;
 
-      for (let r = range.s.r; r <= effectiveEndRow; r++) {
-        const rowIdx = r - range.s.r;
-        const isHeaderRow = hasHeader && r === firstRowIdx;
-        const cells = [];
-        let maxRowH = fontSize + cellPadding * 2 + 4;
+      for (let rIdx = 0; rIdx < rawRowHeights.length; rIdx++) {
+        const r = range.s.r + rIdx;
+        const rowH = scaledRowH[rIdx];
+        let currentX = startX;
 
-        for (let c = range.s.c; c <= range.e.c; c++) {
-          const colIdx = c - range.s.c;
+        for (let cIdx = 0; cIdx < rawColWidths.length; cIdx++) {
+          const c = range.s.c + cIdx;
+          const colW = scaledColW[cIdx];
+
           const mergeInfo = mergeMap.get(`${r},${c}`);
-
           if (mergeInfo && !mergeInfo.isMaster) {
-            cells.push({ isCovered: true });
+            currentX += colW;
             continue;
           }
 
-          const colspan = mergeInfo ? mergeInfo.colspan : 1;
-          const rowspan = mergeInfo ? mergeInfo.rowspan : 1;
-
-          // Compute cell width spanning merged columns
-          let cellW = 0;
-          for (let k = 0; k < colspan && (colIdx + k) < colWidths.length; k++) {
-            cellW += colWidths[colIdx + k];
+          let cellW = colW;
+          let cellH = rowH;
+          if (mergeInfo && mergeInfo.isMaster) {
+            cellW = 0;
+            for (let k = 0; k < mergeInfo.colspan && (cIdx + k) < scaledColW.length; k++) {
+              cellW += scaledColW[cIdx + k];
+            }
+            cellH = 0;
+            for (let s = 0; s < mergeInfo.rowspan && (rIdx + s) < scaledRowH.length; s++) {
+              cellH += scaledRowH[rIdx + s];
+            }
           }
 
           const addr = XLSX.utils.encode_cell({ r, c });
           const cell = worksheet[addr];
-          const text = getCellFormattedText(cell);
-          const isBold = isHeaderRow || !!cell?.s?.font?.bold;
-          const fontToUse = isBold ? fontBold : font;
-          const align = getCellAlignment(cell, isHeaderRow);
-          const customBg = cell?.s?.fill ? parseCellColor(cell.s.fill.fgColor, null) : null;
 
-          const lines = wrapText(text, cellW - cellPadding * 2, fontToUse, fontSize);
-
-          if (rowspan === 1) {
-            const neededH = lines.length * lineHeight + cellPadding * 2 + 2;
-            if (neededH > maxRowH) maxRowH = neededH;
+          // Background
+          let bg = rgb(1, 1, 1);
+          if (cell?.s?.fill) {
+            bg = parseCellColor(cell.s.fill.fgColor, bg);
+          } else if (tableStyle === 'striped' && (rIdx % 2 === 1)) {
+            bg = rgb(0.97, 0.98, 0.99);
           }
 
-          cells.push({
-            isCovered: false,
-            text,
-            lines,
-            align,
-            colspan,
-            rowspan,
-            cellW,
-            isBold,
-            customBg,
+          page.drawRectangle({
+            x: currentX,
+            y: currentY - cellH,
+            width: cellW,
+            height: cellH,
+            color: bg,
           });
-        }
 
-        // Check worksheet['!rows'] for explicit row height
-        if (worksheet['!rows'] && worksheet['!rows'][r]?.hpt) {
-          maxRowH = Math.max(maxRowH, worksheet['!rows'][r].hpt);
-        }
-
-        rowHeights[rowIdx] = maxRowH;
-        preppedRows[rowIdx] = { isHeaderRow, cells };
-      }
-
-      // Paginate rows
-      const headerSpace = 32; // Title banner at top of page
-      const availableTableH = usableH - headerSpace;
-      const headerRowH = hasHeader ? rowHeights[0] : 0;
-      const startDataRowIdx = hasHeader ? 1 : 0;
-
-      const pageRowSlices = [];
-      let currentSlice = [];
-      let currentSliceH = 0;
-
-      for (let i = startDataRowIdx; i < preppedRows.length; i++) {
-        const h = rowHeights[i];
-        if (currentSlice.length > 0 && currentSliceH + h + headerRowH > availableTableH) {
-          pageRowSlices.push(currentSlice);
-          currentSlice = [i];
-          currentSliceH = h;
-        } else {
-          currentSlice.push(i);
-          currentSliceH += h;
-        }
-      }
-      if (currentSlice.length > 0 || pageRowSlices.length === 0) {
-        pageRowSlices.push(currentSlice);
-      }
-
-      const totalSheetPages = pageRowSlices.length;
-
-      // Render each page
-      for (let pIdx = 0; pIdx < totalSheetPages; pIdx++) {
-        const page = pdfDoc.addPage([pageW, pageH]);
-        let y = pageH - margin;
-
-        // Top Sheet Banner: Sheet name (left), Page number (right)
-        const displaySheetTitle = totalSheets > 1 ? `${file.name} — ${sheetName}` : `${file.name.replace(/\.[^/.]+$/, '')} — ${sheetName}`;
-        page.drawText(cleanTextForPdf(displaySheetTitle, fontBold), {
-          x: margin,
-          y: y - 10,
-          size: 11,
-          font: fontBold,
-          color: textPrimary,
-        });
-
-        const pageLabel = `Page ${pIdx + 1} of ${totalSheetPages}`;
-        const pageLabelW = font.widthOfTextAtSize(pageLabel, 9);
-        page.drawText(pageLabel, {
-          x: pageW - margin - pageLabelW,
-          y: y - 10,
-          size: 9,
-          font: font,
-          color: rgb(0.45, 0.49, 0.56),
-        });
-
-        // Banner divider line
-        page.drawLine({
-          start: { x: margin, y: y - 18 },
-          end: { x: margin + usableW, y: y - 18 },
-          thickness: 0.75,
-          color: borderDark,
-        });
-
-        y -= headerSpace;
-
-        // Rows to render on this page: header row (if exists) + current slice of data rows
-        const rowsToDraw = [];
-        if (hasHeader) {
-          rowsToDraw.push({ rowIdx: 0, isHeader: true });
-        }
-        for (const rowIdx of pageRowSlices[pIdx]) {
-          rowsToDraw.push({ rowIdx, isHeader: false });
-        }
-
-        // Draw each row
-        for (const item of rowsToDraw) {
-          const rowIdx = item.rowIdx;
-          const isHeader = item.isHeader;
-          const rowData = preppedRows[rowIdx];
-          if (!rowData) continue;
-
-          const rowH = rowHeights[rowIdx];
-          let currentX = margin;
-
-          for (let colIdx = 0; colIdx < rowData.cells.length; colIdx++) {
-            const cellInfo = rowData.cells[colIdx];
-            const colW = colWidths[colIdx];
-
-            if (cellInfo.isCovered) {
-              currentX += colW;
-              continue;
-            }
-
-            const cellW = cellInfo.cellW;
-            let cellH = rowH;
-            if (cellInfo.rowspan > 1) {
-              cellH = 0;
-              for (let s = 0; s < cellInfo.rowspan && (rowIdx + s) < rowHeights.length; s++) {
-                cellH += rowHeights[rowIdx + s];
-              }
-            }
-
-            // Cell Background
-            let bg = rgb(1, 1, 1);
-            if (cellInfo.customBg) {
-              bg = cellInfo.customBg;
-            } else if (isHeader) {
-              bg = excelHeaderBg;
-            } else if (tableStyle === 'striped' && (rowIdx % 2 === 1)) {
-              bg = excelStripeBg;
-            }
-
+          // Border
+          if (tableStyle !== 'minimal') {
+            const bColor = tableStyle === 'bordered' ? borderDark : excelGridBorder;
             page.drawRectangle({
               x: currentX,
-              y: y - cellH,
+              y: currentY - cellH,
               width: cellW,
               height: cellH,
-              color: bg,
+              borderColor: bColor,
+              borderWidth: Math.max(0.3, 0.5 * Math.min(1, scale)),
             });
-
-            // Cell Border
-            if (tableStyle !== 'minimal') {
-              const bColor = isHeader ? borderDark : (tableStyle === 'bordered' ? borderDark : excelGridBorder);
-              page.drawRectangle({
-                x: currentX,
-                y: y - cellH,
-                width: cellW,
-                height: cellH,
-                borderColor: bColor,
-                borderWidth: isHeader ? 0.75 : 0.5,
-              });
-            } else {
-              // Minimal style: bottom border on rows
-              page.drawLine({
-                start: { x: currentX, y: y - cellH },
-                end: { x: currentX + cellW, y: y - cellH },
-                thickness: isHeader ? 1.0 : 0.5,
-                color: isHeader ? borderDark : excelGridBorder,
-              });
-            }
-
-            // Cell Text
-            if (cellInfo.lines && cellInfo.lines.length > 0) {
-              const fontToUse = cellInfo.isBold ? fontBold : font;
-              const textColor = isHeader ? textHeader : textPrimary;
-              const totalTextH = cellInfo.lines.length * lineHeight;
-              const topPad = Math.max(cellPadding, (cellH - totalTextH) / 2);
-
-              for (let lIdx = 0; lIdx < cellInfo.lines.length; lIdx++) {
-                const line = cellInfo.lines[lIdx];
-                if (!line) continue;
-
-                const cleanLine = cleanTextForPdf(line, fontToUse);
-                if (!cleanLine) continue;
-
-                const textW = fontToUse.widthOfTextAtSize(cleanLine, fontSize);
-                let textX;
-                if (cellInfo.align === 'right') {
-                  textX = currentX + cellW - cellPadding - textW;
-                } else if (cellInfo.align === 'center') {
-                  textX = currentX + (cellW - textW) / 2;
-                } else {
-                  textX = currentX + cellPadding;
-                }
-
-                const textY = y - topPad - (lIdx + 1) * lineHeight + (fontSize * 0.22);
-                page.drawText(cleanLine, {
-                  x: Math.max(currentX + 1, textX),
-                  y: textY,
-                  size: fontSize,
-                  font: fontToUse,
-                  color: textColor,
-                });
-              }
-            }
-
-            currentX += colW;
+          } else {
+            page.drawLine({
+              start: { x: currentX, y: currentY - cellH },
+              end: { x: currentX + cellW, y: currentY - cellH },
+              thickness: Math.max(0.3, 0.5 * Math.min(1, scale)),
+              color: excelGridBorder,
+            });
           }
 
-          y -= rowH;
+          // Cell text
+          const text = getCellFormattedText(cell);
+          if (text.trim() !== '') {
+            const isBold = !!cell?.s?.font?.bold;
+            const fontToUse = isBold ? fontBold : font;
+            const textColor = isBold ? textHeader : textPrimary;
+            const align = getCellAlignment(cell, false);
+
+            const maxTextW = Math.max(1, cellW - pad * 2);
+            const lines = wrapText(text, maxTextW, fontToUse, cellFontSize);
+
+            const textBlockH = lines.length * lineHeight;
+            const topPad = Math.max(pad, (cellH - textBlockH) / 2);
+
+            for (let lIdx = 0; lIdx < lines.length; lIdx++) {
+              const line = lines[lIdx];
+              if (!line) continue;
+
+              const cleanLine = cleanTextForPdf(line, fontToUse);
+              if (!cleanLine) continue;
+
+              const textW = fontToUse.widthOfTextAtSize(cleanLine, cellFontSize);
+              let textX;
+              if (align === 'right') {
+                textX = currentX + cellW - pad - textW;
+              } else if (align === 'center') {
+                textX = currentX + (cellW - textW) / 2;
+              } else {
+                textX = currentX + pad;
+              }
+
+              const textY = currentY - topPad - (lIdx + 1) * lineHeight + (cellFontSize * 0.22);
+              page.drawText(cleanLine, {
+                x: Math.max(currentX + 0.5, textX),
+                y: textY,
+                size: cellFontSize,
+                font: fontToUse,
+                color: textColor,
+              });
+            }
+          }
+
+          currentX += colW;
         }
 
-        // Draw clean bottom bounding line for the table
-        page.drawLine({
-          start: { x: margin, y },
-          end: { x: margin + usableW, y },
-          thickness: 0.75,
-          color: borderDark,
-        });
+        currentY -= rowH;
       }
 
       sheetsProcessed++;
